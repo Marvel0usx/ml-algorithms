@@ -4,8 +4,8 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 
-FAKE_HEADER = r"./data/clean_fake.txt"
-REAL_HEADER = r"./data/clean_real.txt"
+FAKE_HEADER = r"../data/clean_fake.txt"
+REAL_HEADER = r"../data/clean_real.txt"
 
 TRAIN_SPLIT = 0.7
 VALID_SPLIT = 0.5
@@ -30,22 +30,22 @@ def load_data():
     fake_header_vec.fit_transform(fake_headers)
     real_headers_vec.fit_transform(real_headers)
 
-    features = fake_header_vec.get_feature_names() +\
-                real_headers_vec.get_feature_names()
+    features = sorted(list(set(fake_header_vec.get_feature_names() +\
+                real_headers_vec.get_feature_names())))
 
     new_fake_header_vec = CountVectorizer(vocabulary=features)
     new_real_header_vec = CountVectorizer(vocabulary=features)
 
-    fake_header_X = new_fake_header_vec.fit_transform(fake_headers)
-    real_header_X = new_real_header_vec.fit_transform(real_headers)
+    fake_header_X = new_fake_header_vec.fit_transform(fake_headers).toarray()
+    real_header_X = new_real_header_vec.fit_transform(real_headers).toarray()
 
-    dataset_t = np.concatenate(
-        np.zeros((-1, fake_header_X.shape[0])),
-        np.ones((-1, real_header_X.shpae[0])),
-        axis=1
+    dataset_t = np.append(
+        np.zeros(fake_header_X.shape[0]),
+        np.ones(real_header_X.shape[0])
     )
-    dataset_X = np.concatenate(fake_header_X, real_header_X, axis=0)
-    dataset = pd.DataFrame(np.concatenate(dataset_X, dataset_t, axis=1), columns=features + ["y"])
+
+    dataset_X = np.append(fake_header_X, real_header_X, axis=0)
+    dataset = pd.DataFrame(np.concatenate((dataset_X, dataset_t.reshape((dataset_t.shape[0], 1))), axis=1), columns=features + ["t"])
 
     training_X_mask = np.random.rand(dataset.shape[0]) < TRAIN_SPLIT
     training_X = dataset[training_X_mask]
@@ -55,15 +55,17 @@ def load_data():
     testing_X = remained_X[test_validation_mask]
     validating_X = remained_X[~test_validation_mask]
 
+    return training_X, testing_X, validating_X
 
-def select_knn_model(metric=None):
+
+def select_knn_model(training_X, validating_X, metric=None):
     models = {}
     for k in range(K_START, K_END + 1):
         this = KNeighborsClassifier(n_neighbors=k, metric=[metric, "minkowski"][metric is None])
-        this.fit(training_X[:, :-1], training_X[:, -1])
+        this.fit(training_X.iloc[:, :-1], training_X.iloc[:, -1])
         models[k] = [this]
-        models[k].append(this.score(training_X[:, :-1], training_X[:, -1]))
-        models[k].append(this.score(validating_X[:, :-1], validating_X[:, -1]))
+        models[k].append(this.score(training_X.iloc[:, :-1], training_X.iloc[:, -1]))
+        models[k].append(this.score(validating_X.iloc[:, :-1], validating_X.iloc[:, -1]))
 
     best_model = sorted(models.items(), key=lambda m: m[1][2])[0][0]
     return best_model, models
@@ -81,11 +83,11 @@ def plot_errors(models):
 
 
 if __name__ == "__main__":
-    load_data()
-    best_model, models = select_knn_model()
-    best_model_2, models_2 = select_knn_model("cosine")
-    plot_errors(models).savefig("knn-minkowski.png")
-    plot_errors(models_2).savefig("knn-cosine.png")
+    training_X, testing_X, validating_X = load_data()
+    best_model, models = select_knn_model(training_X, validating_X)
+    best_model_2, models_2 = select_knn_model(training_X, validating_X, "cosine")
+    plot_errors(models)
+    plot_errors(models_2)
 
     import pickle
     pickle.dump(models, open("knn-minkowski.dat", "wb"))
