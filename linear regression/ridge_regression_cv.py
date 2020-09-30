@@ -42,7 +42,7 @@ def train_model(data: pd.DataFrame, lambd: float):
     X = data.drop("t", axis=1)
     t = data["t"]
     # Direct method to find optimal weight.
-    w_ridge = np.dot(np.dot(np.linalg.inv(np.dot(X.T, X) + lambd * np.identity(X.shape[1])), X.T), t)
+    w_ridge = np.dot(np.dot(np.linalg.inv(np.dot(X.T, X) + lambd * X.shape[0] * np.identity(X.shape[1])), X.T), t)
     return w_ridge
 
 
@@ -53,7 +53,7 @@ def predict(data, model):
 
 def loss(data, model):
     """Function calculates the loss based on data and model."""
-    return np.power(np.linalg.norm(np.dot(data.drop("t", axis=1), model) - data["t"]), 2) / (2 * data.shape[0])
+    return np.sum(np.square(predict(data, model) - data["t"])) / (2 * data.shape[0])
 
 
 def cross_validation(data: pd.DataFrame, num_folds: int, lambd_seq):
@@ -95,7 +95,7 @@ def plot_errors(df_errors):
     """Function that plots errors."""
     import seaborn as sns
     import matplotlib.pyplot as plt
-    g = sns.relplot(data=df_errors, x="lambd", y="error", hue="type")
+    ax = sns.lineplot(data=df_errors, x="lambd", y="error", hue="type", style="type", markers=True, dashes=False)
     plt.show()
 
 
