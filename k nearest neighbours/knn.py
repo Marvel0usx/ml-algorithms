@@ -14,10 +14,6 @@ TEST_SPLIT = 0.5
 K_START = 1
 K_END = 20
 
-training_X = None
-validating_X = None
-testing_X = None
-
 
 def load_data():
     """Function that victories news headers."""
@@ -82,12 +78,23 @@ def plot_errors(models):
     return plt
 
 
+def report_best_model_performance(model, data):
+    """Function that compute loss based on model and data."""
+    score = model.score(data.iloc[:, :-1], data.iloc[:, -1])
+    print(f"Testing Score: {score}")
+
+
 if __name__ == "__main__":
     training_X, testing_X, validating_X = load_data()
+
     best_model, models = select_knn_model(training_X, validating_X)
     best_model_2, models_2 = select_knn_model(training_X, validating_X, "cosine")
     plot_errors(models)
     plot_errors(models_2)
+
+    # Report best models' performance.
+    report_best_model_performance(models[best_model][0], testing_X)
+    report_best_model_performance(models_2[best_model_2][0], testing_X)
 
     import pickle
     pickle.dump(models, open("knn-minkowski.dat", "wb"))
