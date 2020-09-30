@@ -111,3 +111,5 @@ if __name__ == "__main__":
     df_errors = lambd_specific_error(lambd_seq).append(fold_5_errors, sort=False).append(fold_10_errors, sort=False)
     # Plot
     plot_errors(df_errors)
+    # Report the best lambda
+    print(df_errors.loc[df_errors.loc[:, "type"] == "test"].sort_values(by="error"))
